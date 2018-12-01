@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <title>MongoChat</title>
+    <style>
+        #messages {
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 offset-md-3 col-sm-12">
+                <h1 class="text-center">
+                    MongoChat
+                    <button id="clear" class="btn btn-primary">
+                        Clear
+                    </button>
+                </h1>
+                <div id="status"></div>
+                <div id="chat">
+                    <input type="text" id="username" class="form-control" placeholder="Enter Your Name...">
+                    <br>
+                    <div class="card">
+                        <div id="messages" class="card-block"></div>
+                    </div>
+                    <br>
+                    <textarea id="textarea" class="form-control" placeholder="Enter Your Message..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <script>
+        (function () {
+            const element = function (id) {
+                return document.getElementById(id);
+            };
+
+            const status = element('status');
+            const messages = element('messages');
+            const textarea = element('textarea');
+            const username = element('username');
+            const clearBtn = element('clear');
+
+            const statusDefault = status.textContent;
+            const setStatus = function (s) {
+                status.textContent = s;
+
+                if (s !== statusDefault) {
+                    const delay = setTimeout(function () {
+                        setStatus(statusDefault);
+                    }, 3000);
+                }
+            };
+
+            const socket = io.connect('http://127.0.0.1:5000');
+
+            if (socket) {
+                console.log('connected');
+                
+                socket.on('output', function (data) {
+
+                    if (data.length) {
+                        for (let item = 0; item < data.length; item++) {
+                            const message = document.createElement('div');
+                            message.setAttribute('class', 'chat-message');
+                            message.textContent = data[item].name + ": " +
+                                data[item].message;
+                            messages.appendChild(message);
+                            messages.insertBefore(message, messages.firstChild);
+                        }
+                    }
+                });
+
+                socket.on('status', function (status) {
+                    setStatus(status.message || status);
+
+                    if (status.clear) {
+                        textarea.value = '';
+                    }
+                });
+
+                textarea.addEventListener('keydown', function (event) {
+                    if (event.which === 13 && event.shiftKey === false) {
+                        socket.emit('input', {
+                            name: username.value,
+                            message: textarea.value,
+                        });
+
+                        event.preventDefault();
+                    }
+                });
+
+                clearBtn.addEventListener('click', function () {
+                    socket.emit('clear');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
